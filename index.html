@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FFA • Time to Financial Freedom</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    body { font-family: Inter, sans-serif; background: #0b0b0b; color: #fff; margin: 0; padding: 20px; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    h1 { color: #d4af37; text-align: center; }
+    .inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 40px; margin-bottom: 20px; align-items: end; }
+    label { font-size: 14px; margin-bottom: 5px; display: block; }
+    input { width: 100%; padding: 8px; border-radius: 5px; border: none; font-size: 16px; }
+    button { background: #d4af37; color: #000; font-weight: bold; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+    canvas { background: #0f0f12; padding: 10px; border-radius: 10px; margin-top: 30px; }
+    .stats { display: flex; justify-content: space-around; margin-top: 20px; flex-wrap: wrap; gap: 10px; }
+    .stat { background: #101012; padding: 15px; border-radius: 10px; text-align: center; min-width: 220px; flex: 1; }
+    .stat .k { font-size: 28px; font-weight: 800; color: #fff; }
+    .stat .t { font-size: 14px; color: #d4af37; }
+    .hint { color:#cfcfe0; text-align:center; margin:10px auto 20px; max-width:760px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Time to Financial Freedom</h1>
+    <p class="hint">With the same savings rate and returns, a higher active income means a larger monthly contribution — which compounds faster and slashes the years to your goal. You can now model <strong>year‑over‑year income growth</strong> too.</p>
+    <div class="inputs">
+      <div style="grid-column: 1 / span 2;">
+        <label>Monthly Active Income (Scenario 1)</label>
+        <input type="number" id="income1" value="5000" min="0" step="100">
+      </div>
+      <div style="grid-column: 1 / span 2;">
+        <label>Monthly Active Income (Scenario 2)</label>
+        <input type="number" id="income2" value="50000" min="0" step="100">
+      </div>
+      <div>
+        <label>Savings Rate (%)</label>
+        <input type="number" id="savingsRate" value="20" min="1" max="90" step="1">
+      </div>
+      <div>
+        <label>Annual Return (%)</label>
+        <input type="number" id="annualReturn" value="8" min="0" max="30" step="0.5">
+      </div>
+      <div>
+        <label>Yearly Income Growth (%)</label>
+        <input type="number" id="incomeGrowth" value="0" min="-50" max="200" step="0.5">
+      </div>
+      <div>
+        <label>Target Goal ($)</label>
+        <input type="number" id="goal" value="5000000" min="10000" step="5000">
+      </div>
+    </div>
+    <button onclick="calculate()">Calculate</button>
+    <div class="stats">
+      <div class="stat">
+        <div class="t">Scenario 1</div>
+        <div class="k" id="years1">—</div>
+      </div>
+      <div class="stat">
+        <div class="t">Scenario 2</div>
+        <div class="k" id="years2">—</div>
+      </div>
+      <div class="stat">
+        <div class="t">Faster By</div>
+        <div class="k" id="faster">—</div>
+      </div>
+    </div>
+    <canvas id="chart" height="140"></canvas>
+    <p class="hint"><strong>PMT</strong> simply means your <em>monthly contribution</em> — the amount you move into your Financial Freedom Fund each month (Income × Savings Rate).</p>
+  </div>
+  <script>
+    /**
+     * Simulate month-by-month contributions with annual income growth.
+     * startIncome: starting monthly active income
+     * growthPct: yearly growth applied at the start of each new year
+     */
+    function yearsToGoalWithGrowth(startIncome, savingsRate, annualReturn, goal, growthPct){
+      let monthlyReturn = (annualReturn/100)/12;
+      let total = 0;
+      let months = 0;
+      let income = startIncome; // monthly income for the current year
+      const growth = 1 + (growthPct/100);
+
+      while (total < goal && months < 100*12){
+        // Recompute monthly savings from current income
+        const monthlySavings = income * (savingsRate/100);
+        total = total * (1 + monthlyReturn) + monthlySavings;
+        months++;
+        // every 12 months, bump income by growth rate
+        if (months % 12 === 0){
+          income = income * growth;
+        }
+      }
+      if (months >= 100*12 && total < goal) return Infinity; // cap at 100 years
+      return (months/12).toFixed(1);
+    }
+
+    let chart;
+    function calculate(){
+      const income1 = parseFloat(document.getElementById('income1').value || '0');
+      const income2 = parseFloat(document.getElementById('income2').value || '0');
+      const sr = parseFloat(document.getElementById('savingsRate').value || '0');
+      const ar = parseFloat(document.getElementById('annualReturn').value || '0');
+      const growth = parseFloat(document.getElementById('incomeGrowth').value || '0');
+      const goal = parseFloat(document.getElementById('goal').value || '0');
+
+      const y1 = yearsToGoalWithGrowth(income1, sr, ar, goal, growth);
+      const y2 = yearsToGoalWithGrowth(income2, sr, ar, goal, growth);
+
+      document.getElementById('years1').textContent = (y1===Infinity? '—' : y1 + ' yrs');
+      document.getElementById('years2').textContent = (y2===Infinity? '—' : y2 + ' yrs');
+
+      let faster = '—';
+      if (isFinite(y1) && isFinite(y2) && Number(y1) > 0){
+        faster = (((Number(y1) - Number(y2)) / Number(y1)) * 100).toFixed(0) + '%';
+      }
+      document.getElementById('faster').textContent = faster;
+
+      const ctx = document.getElementById('chart').getContext('2d');
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Scenario 1', 'Scenario 2'],
+          datasets: [{
+            label: 'Years to Goal',
+            data: [Number(y1)||0, Number(y2)||0],
+            backgroundColor: ['#d4af37', '#ffffff'],
+            borderRadius: 8
+          }]
+        },
+        options: {
+          plugins: { legend: { display: false }, tooltip:{ callbacks:{ label:(ctx)=> `${ctx.parsed.y.toFixed(1)} years` } } },
+          scales: {
+            y: { beginAtZero: true, title: { display: true, text: 'Years' } }
+          }
+        }
+      });
+    }
+
+    // init
+    calculate();
+  </script>
+</body>
+</html>
